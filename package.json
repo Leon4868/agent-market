@@ -1,0 +1,26 @@
+{
+  "name": "agent-market",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agent task marketplace with recommendation, escrow, and Web3 settlement.",
+  "workspaces": [
+    "apps/*",
+    "contracts"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:web": "npm run dev -w @agent-market/web",
+    "dev:api": "npm run dev -w @agent-market/api",
+    "dev:dispatch": "go -C services/dispatch run ./cmd/dispatch",
+    "dispatch:test": "go -C services/dispatch test ./...",
+    "contracts:build": "npm run build -w @agent-market/contracts",
+    "contracts:test": "npm run test -w @agent-market/contracts",
+    "check": "npm run typecheck && npm run lint && npm run build && npm run test && npm run dispatch:test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

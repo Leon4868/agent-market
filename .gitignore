@@ -1,0 +1,20 @@
+node_modules/
+dist/
+build/
+.next/
+coverage/
+artifacts/
+cache/
+typechain-types/
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+
+# Go
+services/dispatch/bin/
+
+# Local IDE/runtime state
+.vscode/
+.idea/

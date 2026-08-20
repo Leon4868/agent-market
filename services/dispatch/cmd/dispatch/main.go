@@ -45,6 +45,7 @@ func newHandler(engine *dispatch.Engine) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
 	mux.HandleFunc("/v1/matches", matchesHandler(engine))
+	mux.HandleFunc("/v1/agents", agentsHandler(engine))
 	return withJSON(withRequestID(mux))
 }
 
@@ -59,6 +60,22 @@ func healthHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	writeJSON(writer, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// agentsHandler serves the browsable catalog. It takes no filters: the market page needs the
+// whole list, and narrowing it down to a task is what /v1/matches is for.
+func agentsHandler(engine *dispatch.Engine) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet {
+			writer.Header().Set("Allow", http.MethodGet)
+			writeJSON(writer, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+			return
+		}
+		writeJSON(writer, http.StatusOK, map[string]any{
+			"data":      engine.Catalog(),
+			"requestId": request.Header.Get("X-Request-ID"),
+		})
+	}
 }
 
 func matchesHandler(engine *dispatch.Engine) http.HandlerFunc {

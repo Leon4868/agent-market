@@ -1,0 +1,41 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "chain",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:chain"
+      ],
+      "port": 8545
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:web"
+      ],
+      "port": 5173
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:api"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "dispatch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:dispatch"
+      ],
+      "port": 8080
+    }
+  ]
+}

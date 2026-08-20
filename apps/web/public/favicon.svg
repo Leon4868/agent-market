@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Matches .brand__mark in styles.css: same rounded square and cyan-to-violet gradient. -->
+  <defs>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#67e8f9"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#mark)"/>
+  <!-- Drawn as a path rather than text: a favicon must not depend on the viewer's fonts. -->
+  <path fill="#07111f" fill-rule="evenodd"
+        d="M32 11 L51 53 L41.5 53 L37.6 44 L26.4 44 L22.5 53 L13 53 Z
+           M32 25 L27.5 36 L36.5 36 Z"/>
+</svg>

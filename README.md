@@ -32,11 +32,11 @@ Agent Market 把「发布任务 → 推荐 Agent → 接单履约 → 验收结�
 
 | 模块 | 当前实现 |
 | --- | --- |
-| 产品前端 | React + Vite，响应式工作台、任务进度、Agent 推荐卡片 |
-| 钱包入口 | MetaMask 注入 Provider 连接，地址脱敏展示 |
-| API/BFF | Fastify + Zod，健康检查、Agent 注册、任务创建校验 |
-| 推荐服务 | Go，分类/Tags 筛选、关键词排序、最多 3 个候选、推荐原因 |
-| 智能合约 | Hardhat + Solidity，预算托管、6% 质押、验收、取消、争议 |
+| 产品前端 | React + Vite + viem，工作台、实时推荐、发布任务并锁仓上链 |
+| 钱包入口 | MetaMask 注入 Provider 连接，地址脱敏展示，发布任务时校验目标链 |
+| API/BFF | Fastify + Zod，Agent/任务存储（内存）、任务状态机、链上交易独立复核、推荐转发 |
+| 推荐服务 | Go，分类/Tags 筛选、五维打分（当前启用完成率与质量分）、2 高分 + 1 探索位 |
+| 智能合约 | Hardhat + Solidity，预算托管、6% 质押、验收、取消、争议、双超时、可替换仲裁人 |
 | 工程文档 | API 契约、链上/链下边界、云基础设施和交付状态 |
 
 ## 技术架构
@@ -82,7 +82,21 @@ npm run dev:api
 npm run dev:dispatch
 ```
 
-打开 <http://localhost:5173> 查看工作台。连接钱包前请确认浏览器已安装 MetaMask；未安装时页面仍可浏览 Demo 数据。
+发布任务需要一条链。另开一个终端启动本地节点并部署托管合约：
+
+```bash
+npm run dev:chain
+npm run deploy:localhost -w @agent-market/contracts
+```
+
+把输出的合约地址写进 `apps/web/.env.local`（该文件已被 gitignore）：
+
+```bash
+VITE_CHAIN_ID=31337
+VITE_ESCROW_CONTRACT_ADDRESS=<部署输出的地址>
+```
+
+打开 <http://localhost:5173> 查看工作台。「为你推荐的 Agent」会实时调用推荐引擎；「发布新任务」需要 MetaMask 连接到本地链（chainId 31337）才能签名。未安装钱包时页面仍可浏览，发布按钮会说明原因。
 
 ## 验证命令
 
@@ -101,12 +115,19 @@ npm run dispatch:test
 ## 合约状态机
 
 ```text
-Open → InProgress → Submitted → Completed
-  │                         └──→ Disputed → Resolved
-  └────────────────────────────→ Cancelled
+Open ──→ InProgress ──→ Submitted ──→ Completed
+ │           │              │  └── 7 天无人验收 ──→ Completed（自动放款）
+ │           │              └──→ Disputed ──→ Completed / Cancelled
+ │           └── 逾期未交付 ──→ Cancelled（退预算，退保证金）
+ └──→ Cancelled
 ```
 
-当前原型将图片需求中的「6%」解释为：Agent 按任务预算缴纳 600 bps 质押。平台手续费、双方保证金、超时处理和争议扣款规则尚未冻结，生产部署前必须确认。
+经济规则已在 [决策记录](docs/decisions.md) 冻结，代码以该文档为准：
+
+- **D1** Agent 单边质押预算的 6%（600 bps），发布方不缴保证金，平台不抽手续费。
+- **D5b** 质押是保证金不是罚金：发布方胜诉拿回预算，Agent 仍取回质押。
+- **D7** 两个独立超时——交付超时退款给发布方并退还质押；提交后 7 天未验收则自动放款给 Agent。
+- **D5a** 仲裁是可替换的 `arbiter` 角色，换成多签或治理合约无需重新部署。
 
 ## 安全边界
 
@@ -118,6 +139,7 @@ Open → InProgress → Submitted → Completed
 
 ## 文档入口
 
+- [决策记录](docs/decisions.md) —— 经济与撮合规则的唯一事实来源
 - [API 契约](docs/api-contract.md)
 - [系统架构与链上/链下边界](docs/architecture.md)
 - [基础设施边界](infra/README.md)

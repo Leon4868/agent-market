@@ -1,23 +1,91 @@
 package dispatch
 
 import (
+	"math"
 	"strings"
 	"testing"
 )
 
-func TestRecommendReturnsAtMostThreeCandidates(t *testing.T) {
+func TestRecommendReservesTheLastSlotForANewcomer(t *testing.T) {
 	engine := NewEngine()
 	result := engine.Recommend(TaskRequest{})
 	if len(result) != 3 {
 		t.Fatalf("expected 3 candidates, got %d", len(result))
 	}
+
 	for index, candidate := range result {
 		if candidate.Algorithm == "" || candidate.ModelVersion == "" {
 			t.Fatalf("candidate %d is missing algorithm metadata: %#v", index, candidate)
 		}
-		if index > 0 && result[index-1].Score < candidate.Score {
-			t.Fatalf("expected descending score order: %#v", result)
+	}
+
+	ranked, explore := result[:2], result[2]
+	for index, candidate := range ranked {
+		if candidate.IsNewcomer() {
+			t.Fatalf("ranked slot %d went to a newcomer: %#v", index, candidate)
 		}
+		if index > 0 && ranked[index-1].Score < candidate.Score {
+			t.Fatalf("expected descending score order in ranked slots: %#v", ranked)
+		}
+	}
+	if !explore.IsNewcomer() {
+		t.Fatalf("explore slot went to an established agent: %#v", explore)
+	}
+	if !contains(explore.Reasons, "探索位随机选出") {
+		t.Fatalf("explore slot is missing its reason: %#v", explore.Reasons)
+	}
+}
+
+// The explore slot has to actually draw at random; a fixed pick would starve every newcomer but
+// one and defeat the point of collecting training data.
+func TestExploreSlotDrawsDifferentNewcomers(t *testing.T) {
+	engine := NewEngine()
+	drawn := make(map[string]struct{})
+	for range 60 {
+		result := engine.Recommend(TaskRequest{Category: "研究分析"})
+		if len(result) != 3 {
+			t.Fatalf("expected 1 ranked agent and 2 newcomers, got %d", len(result))
+		}
+		if !result[1].IsNewcomer() {
+			t.Fatalf("second slot is not a newcomer: %#v", result[1])
+		}
+		drawn[result[1].ID] = struct{}{}
+	}
+	if len(drawn) < 2 {
+		t.Fatalf("explore slot never varied across 60 calls: %v", drawn)
+	}
+}
+
+// Pins the D2 weights: completion rate at 0.60 and quality at 0.40, with the other three
+// dimensions contributing nothing until they have a data source.
+func TestScoreUsesCompletionAndQualityOnly(t *testing.T) {
+	engine := NewEngine()
+	result := engine.Recommend(TaskRequest{Category: "研究分析"})
+	if len(result) == 0 {
+		t.Fatal("expected at least one candidate")
+	}
+
+	atlas := result[0]
+	if atlas.ID != "agent_0x7a2f" {
+		t.Fatalf("expected Atlas Researcher to rank first: %#v", atlas)
+	}
+	expected := 0.60*atlas.Metrics.CompletionRate + 0.40*atlas.Metrics.QualityScore
+	expected = math.Round(expected*1000) / 1000
+	if atlas.Score != expected {
+		t.Fatalf("score %v does not match the D2 formula %v", atlas.Score, expected)
+	}
+}
+
+func TestNewcomersScoreZeroUntilTheyHaveHistory(t *testing.T) {
+	engine := NewEngine()
+	result := engine.Recommend(TaskRequest{Category: "研究分析"})
+
+	explore := result[1]
+	if explore.Metrics.CompletedTasks != 0 {
+		t.Fatalf("expected a newcomer with no history: %#v", explore.Metrics)
+	}
+	if explore.Score != 0 {
+		t.Fatalf("expected a zero score without history, got %v", explore.Score)
 	}
 }
 

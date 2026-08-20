@@ -126,3 +126,54 @@ func TestValidRequestID(t *testing.T) {
 		}
 	}
 }
+
+func TestAgentsHandlerReturnsTheWholeCatalog(t *testing.T) {
+	handler := newHandler(dispatch.NewEngine())
+	request := httptest.NewRequest(http.MethodGet, "/v1/agents", nil)
+	request.Header.Set("X-Request-ID", "req-test-catalog")
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body = %s", response.Code, http.StatusOK, response.Body.String())
+	}
+
+	var body struct {
+		Data      []dispatch.CatalogEntry `json:"data"`
+		RequestID string                  `json:"requestId"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if body.RequestID != "req-test-catalog" {
+		t.Fatalf("requestId = %q", body.RequestID)
+	}
+	if len(body.Data) != 5 {
+		t.Fatalf("expected the full catalog, got %d entries", len(body.Data))
+	}
+	// Newcomers last, so a market page reading top-down never shows an empty-metrics agent above
+	// one with real history.
+	seenNewcomer := false
+	for _, entry := range body.Data {
+		if entry.IsNewcomer {
+			seenNewcomer = true
+			continue
+		}
+		if seenNewcomer {
+			t.Fatalf("established agent %q sorted below a newcomer", entry.ID)
+		}
+	}
+}
+
+func TestAgentsHandlerRejectsUnsupportedMethod(t *testing.T) {
+	handler := newHandler(dispatch.NewEngine())
+	request := httptest.NewRequest(http.MethodPost, "/v1/agents", strings.NewReader(`{}`))
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusMethodNotAllowed)
+	}
+}

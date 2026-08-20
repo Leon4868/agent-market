@@ -8,7 +8,9 @@
     "test": "hardhat test",
     "lint": "oxlint contracts test ignition hardhat.config.ts",
     "deploy:local": "hardhat ignition deploy ignition/modules/AgentTaskEscrow.ts",
-    "deploy:sepolia": "hardhat ignition deploy --network sepolia ignition/modules/AgentTaskEscrow.ts"
+    "deploy:sepolia": "hardhat ignition deploy --network sepolia ignition/modules/AgentTaskEscrow.ts",
+    "node": "hardhat node",
+    "deploy:localhost": "hardhat ignition deploy --network localhost ignition/modules/AgentTaskEscrow.ts"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.1.8",
